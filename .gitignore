@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Question and answer file ###
+/src/main/resources/QnA.txt

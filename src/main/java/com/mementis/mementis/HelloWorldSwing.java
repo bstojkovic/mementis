@@ -13,6 +13,9 @@ import java.awt.BorderLayout;
 import java.awt.Dimension;
 
 import javax.swing.*;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyledDocument;
 
 class QA {
     private String question;
@@ -36,8 +39,12 @@ class QA {
 public class HelloWorldSwing {
 
     private static List<QA> qaList = new ArrayList<>();
+
     private static int currentIndex = 0;
     private static Random random = new Random();
+
+    private static JTextArea questionArea;
+    private static JTextPane answerArea;
 
     public static void main(String[] args) {
         loadQAFromFile("QnA.txt");
@@ -50,7 +57,7 @@ public class HelloWorldSwing {
             JPanel panel = new JPanel(new BorderLayout());
 
             // Creating the question area
-            JTextArea questionArea = new JTextArea("Enter your question here");
+            questionArea = new JTextArea("Enter your question here");
             questionArea.setLineWrap(true);
             questionArea.setWrapStyleWord(true);
             questionArea.setEditable(false);
@@ -59,9 +66,7 @@ public class HelloWorldSwing {
             panel.add(questionScrollPane, BorderLayout.NORTH);
 
             // Creating the answer area
-            JTextArea answerArea = new JTextArea("Your answer will appear here");
-            answerArea.setLineWrap(true);
-            answerArea.setWrapStyleWord(true);
+            answerArea = new JTextPane();
             answerArea.setEditable(false);
             JScrollPane answerScrollPane = new JScrollPane(answerArea);
             answerScrollPane.setPreferredSize(new Dimension(800, 200));
@@ -73,9 +78,9 @@ public class HelloWorldSwing {
             JButton randomButton = new JButton("Random");
 
             // Adding action listeners
-            prevButton.addActionListener(e -> navigateQuestions(questionArea, answerArea, -1));
-            nextButton.addActionListener(e -> navigateQuestions(questionArea, answerArea, 1));
-            randomButton.addActionListener(e -> selectRandomQuestion(questionArea, answerArea));
+            prevButton.addActionListener(e -> navigateQuestion(-1));
+            nextButton.addActionListener(e -> navigateQuestion(1));
+            randomButton.addActionListener(e -> selectRandomQuestion());
 
             // Creating a panel for buttons
             JPanel buttonPanel = new JPanel();
@@ -86,8 +91,7 @@ public class HelloWorldSwing {
 
             // Initialize with the first question, if available
             if (!qaList.isEmpty()) {
-                questionArea.setText(qaList.get(0).getQuestion());
-                answerArea.setText(qaList.get(0).getAnswer());
+                viewCurrentQuestion();
             }
 
             frame.add(panel);
@@ -130,7 +134,16 @@ public class HelloWorldSwing {
         }
     }
 
-    private static void navigateQuestions(JTextArea questionArea, JTextArea answerArea, int direction) {
+    private static void viewQuestionWithIndex(int index) {
+        questionArea.setText(qaList.get(index).getQuestion());
+        answerArea.setText(qaList.get(index).getAnswer());
+    }
+
+    private static void viewCurrentQuestion() {
+        viewQuestionWithIndex(currentIndex);
+    }
+
+    private static void navigateQuestion(int direction) {
         // Update the currentIndex based on the direction
         currentIndex += direction;
 
@@ -142,15 +155,14 @@ public class HelloWorldSwing {
         }
 
         // Set the text area with the new question
-        questionArea.setText(qaList.get(currentIndex).getQuestion());
-        answerArea.setText(qaList.get(currentIndex).getAnswer());
+        viewCurrentQuestion();
     }
 
-    private static void selectRandomQuestion(JTextArea questionArea, JTextArea answerArea) {
+    private static void selectRandomQuestion() {
         if (qaList.isEmpty()) return;
 
         currentIndex = random.nextInt(qaList.size());
-        questionArea.setText(qaList.get(currentIndex).getQuestion());
-        answerArea.setText(qaList.get(currentIndex).getAnswer());
+
+        viewCurrentQuestion();
     }
 }

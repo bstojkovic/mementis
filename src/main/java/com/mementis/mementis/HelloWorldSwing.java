@@ -11,6 +11,8 @@ import java.util.Random;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.Color;
+import java.awt.event.ActionEvent;
 
 import javax.swing.*;
 import javax.swing.text.Style;
@@ -94,6 +96,22 @@ public class HelloWorldSwing {
                 viewCurrentQuestion();
             }
 
+            // Define the action for revealing words
+            Action revealAction = new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true);
+                }
+            };
+
+            // Set up key bindings for the JTextPane
+            KeyStroke spaceKey = KeyStroke.getKeyStroke("SPACE");
+            InputMap inputMap = answerArea.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+            ActionMap actionMap = answerArea.getActionMap();
+
+            inputMap.put(spaceKey, "reveal");
+            actionMap.put("reveal", revealAction);
+
             frame.add(panel);
             frame.pack();
             frame.setLocationRelativeTo(null); // center the window
@@ -104,12 +122,12 @@ public class HelloWorldSwing {
     private static void loadQAFromFile(String filePath) {
         try (InputStream inputStream = HelloWorldSwing.class.getClassLoader().getResourceAsStream(filePath);
              BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            
+
             String line;
             String question = "";
             String answer = "";
             boolean isQuestion = true;
-    
+
             while ((line = reader.readLine()) != null) {
                 if (line.trim().isEmpty()) {
                     qaList.add(new QA(question.trim(), answer.trim()));
@@ -125,6 +143,7 @@ public class HelloWorldSwing {
                     isQuestion = false;
                 }
             }
+
             // Add the last QA pair if the file does not end with a blank line
             if (!question.isEmpty() || !answer.isEmpty()) {
                 qaList.add(new QA(question.trim(), answer.trim()));
@@ -136,7 +155,7 @@ public class HelloWorldSwing {
 
     private static void viewQuestionWithIndex(int index) {
         questionArea.setText(qaList.get(index).getQuestion());
-        answerArea.setText(qaList.get(index).getAnswer());
+        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), false);
     }
 
     private static void viewCurrentQuestion() {
@@ -164,5 +183,46 @@ public class HelloWorldSwing {
         currentIndex = random.nextInt(qaList.size());
 
         viewCurrentQuestion();
+    }
+
+    private static void blankOutWordsInPane(JTextPane textPane, String answer, boolean revealFirstThree) {
+        String[] words = answer.split("\\s+");
+        try {
+            StyledDocument doc = textPane.getStyledDocument();
+
+            Style regularStyle = textPane.addStyle("RegularStyle", null);
+            StyleConstants.setForeground(regularStyle, Color.BLUE);
+
+            Style highlightedStyle = textPane.addStyle("HighlightedStyle", null);
+            Color darkBlue = new Color(0, 0, 139);
+            StyleConstants.setBackground(highlightedStyle, darkBlue);
+
+            doc.remove(0, doc.getLength());
+
+            for (int i = 0; i < words.length; i++) {
+                String word = words[i];
+
+                Style style;
+                String text;
+
+                if (i < 3) {
+                    if (revealFirstThree) {
+                        style = regularStyle;
+                        text = word;
+                    } else {
+                        style = highlightedStyle;
+                        text = "_".repeat(word.length());
+                    }
+                } else {
+                    style = regularStyle;
+                    text = "_".repeat(word.length());
+                }
+
+                doc.insertString(doc.getLength(), text, style);
+                doc.insertString(doc.getLength(), " ", regularStyle);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

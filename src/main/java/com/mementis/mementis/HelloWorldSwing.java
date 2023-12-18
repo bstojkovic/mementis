@@ -4,11 +4,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.ActionListener;
+
 import javax.swing.*;
 
 class QA {
@@ -33,6 +36,7 @@ class QA {
 public class HelloWorldSwing {
 
     private static List<QA> qaList = new ArrayList<>();
+    private static int currentIndex = 0;
 
     public static void main(String[] args) {
         loadQAFromFile("QnA.txt");
@@ -50,7 +54,7 @@ public class HelloWorldSwing {
             questionArea.setWrapStyleWord(true);
             questionArea.setEditable(false);
             JScrollPane questionScrollPane = new JScrollPane(questionArea);
-            questionScrollPane.setPreferredSize(new Dimension(400, 100));
+            questionScrollPane.setPreferredSize(new Dimension(800, 200));
             panel.add(questionScrollPane, BorderLayout.NORTH);
 
             // Creating the answer area
@@ -59,8 +63,22 @@ public class HelloWorldSwing {
             answerArea.setWrapStyleWord(true);
             answerArea.setEditable(false);
             JScrollPane answerScrollPane = new JScrollPane(answerArea);
-            answerScrollPane.setPreferredSize(new Dimension(400, 100));
+            answerScrollPane.setPreferredSize(new Dimension(800, 200));
             panel.add(answerScrollPane, BorderLayout.CENTER);
+
+            // Creating buttons for navigation
+            JButton prevButton = new JButton("Previous");
+            JButton nextButton = new JButton("Next");
+
+            // Adding action listeners
+            prevButton.addActionListener(e -> navigateQuestions(questionArea, answerArea, -1));
+            nextButton.addActionListener(e -> navigateQuestions(questionArea, answerArea, 1));
+
+            // Creating a panel for buttons
+            JPanel buttonPanel = new JPanel();
+            buttonPanel.add(prevButton);
+            buttonPanel.add(nextButton);
+            panel.add(buttonPanel, BorderLayout.SOUTH);
 
             // Initialize with the first question, if available
             if (!qaList.isEmpty()) {
@@ -106,5 +124,21 @@ public class HelloWorldSwing {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void navigateQuestions(JTextArea questionArea, JTextArea answerArea, int direction) {
+        // Update the currentIndex based on the direction
+        currentIndex += direction;
+
+        // Check for bounds
+        if (currentIndex < 0) {
+            currentIndex = qaList.size() - 1;
+        } else if (currentIndex >= qaList.size()) {
+            currentIndex = 0;
+        }
+
+        // Set the text area with the new question
+        questionArea.setText(qaList.get(currentIndex).getQuestion());
+        answerArea.setText(qaList.get(currentIndex).getAnswer());
     }
 }

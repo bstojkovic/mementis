@@ -43,6 +43,7 @@ public class HelloWorldSwing {
     private static List<QA> qaList = new ArrayList<>();
 
     private static int currentIndex = 0;
+    private static boolean wordsRevealed = false;
     private static Random random = new Random();
 
     private static JTextArea questionArea;
@@ -96,21 +97,40 @@ public class HelloWorldSwing {
                 viewCurrentQuestion();
             }
 
-            // Define the action for revealing words
-            Action revealAction = new AbstractAction() {
+            Action spaceBarAction = new AbstractAction() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true);
+                    if (!wordsRevealed) {
+                        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true, null);
+                        wordsRevealed = true;
+                    } else {
+                        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true, Color.RED);
+                    }
+                }
+            };
+
+            // Action for Enter Key - Mark Words Green
+            Action markGreenAction = new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    if (wordsRevealed) {
+                        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true, Color.GREEN);
+                    }
                 }
             };
 
             // Set up key bindings for the JTextPane
             KeyStroke spaceKey = KeyStroke.getKeyStroke("SPACE");
+            KeyStroke enterKey = KeyStroke.getKeyStroke("ENTER");
+
             InputMap inputMap = answerArea.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
             ActionMap actionMap = answerArea.getActionMap();
 
-            inputMap.put(spaceKey, "reveal");
-            actionMap.put("reveal", revealAction);
+            inputMap.put(spaceKey, "spaceKey");
+            inputMap.put(enterKey, "markGreen");
+
+            actionMap.put("spaceKey", spaceBarAction);
+            actionMap.put("markGreen", markGreenAction);
 
             frame.add(panel);
             frame.pack();
@@ -155,7 +175,7 @@ public class HelloWorldSwing {
 
     private static void viewQuestionWithIndex(int index) {
         questionArea.setText(qaList.get(index).getQuestion());
-        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), false);
+        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), false, null);
     }
 
     private static void viewCurrentQuestion() {
@@ -185,17 +205,29 @@ public class HelloWorldSwing {
         viewCurrentQuestion();
     }
 
-    private static void blankOutWordsInPane(JTextPane textPane, String answer, boolean revealFirstThree) {
+    private static void blankOutWordsInPane(JTextPane textPane, String answer, boolean revealFirstThree, Color firstThreeWordsColor) {
         String[] words = answer.split("\\s+");
+
         try {
             StyledDocument doc = textPane.getStyledDocument();
+
+            Color darkBlue = new Color(0, 0, 139);
 
             Style regularStyle = textPane.addStyle("RegularStyle", null);
             StyleConstants.setForeground(regularStyle, Color.BLUE);
 
             Style highlightedStyle = textPane.addStyle("HighlightedStyle", null);
-            Color darkBlue = new Color(0, 0, 139);
             StyleConstants.setBackground(highlightedStyle, darkBlue);
+
+            Style selectedStyle = textPane.addStyle("SelectedStyle", null);
+            StyleConstants.setForeground(selectedStyle, Color.WHITE);
+            StyleConstants.setBackground(selectedStyle, darkBlue);
+
+            if (firstThreeWordsColor == null) {
+                firstThreeWordsColor = Color.BLACK;
+            }
+            Style firstThreeStyle = textPane.addStyle("FirstThreeStyle", null);
+            StyleConstants.setForeground(firstThreeStyle, firstThreeWordsColor); // First three words style
 
             doc.remove(0, doc.getLength());
 
@@ -207,8 +239,13 @@ public class HelloWorldSwing {
 
                 if (i < 3) {
                     if (revealFirstThree) {
-                        style = regularStyle;
-                        text = word;
+                        if (firstThreeWordsColor == Color.BLACK) {
+                            style = selectedStyle;
+                            text = " " + word + " ";
+                        } else {
+                            style = firstThreeStyle;
+                            text = word;
+                        }
                     } else {
                         style = highlightedStyle;
                         text = "_".repeat(word.length());

@@ -175,7 +175,7 @@ public class HelloWorldSwing {
 
     private static void viewQuestionWithIndex(int index) {
         questionArea.setText(qaList.get(index).getQuestion());
-        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), false, null);
+        blankOutWordsInPane(answerArea, qaList.get(index).getAnswer(), false, null);
     }
 
     private static void viewCurrentQuestion() {

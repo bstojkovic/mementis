@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -36,6 +37,7 @@ public class HelloWorldSwing {
 
     private static List<QA> qaList = new ArrayList<>();
     private static int currentIndex = 0;
+    private static Random random = new Random();
 
     public static void main(String[] args) {
         loadQAFromFile("QnA.txt");
@@ -68,15 +70,18 @@ public class HelloWorldSwing {
             // Creating buttons for navigation
             JButton prevButton = new JButton("Previous");
             JButton nextButton = new JButton("Next");
+            JButton randomButton = new JButton("Random");
 
             // Adding action listeners
             prevButton.addActionListener(e -> navigateQuestions(questionArea, answerArea, -1));
             nextButton.addActionListener(e -> navigateQuestions(questionArea, answerArea, 1));
+            randomButton.addActionListener(e -> selectRandomQuestion(questionArea, answerArea));
 
             // Creating a panel for buttons
             JPanel buttonPanel = new JPanel();
             buttonPanel.add(prevButton);
             buttonPanel.add(nextButton);
+            buttonPanel.add(randomButton);
             panel.add(buttonPanel, BorderLayout.SOUTH);
 
             // Initialize with the first question, if available
@@ -137,6 +142,14 @@ public class HelloWorldSwing {
         }
 
         // Set the text area with the new question
+        questionArea.setText(qaList.get(currentIndex).getQuestion());
+        answerArea.setText(qaList.get(currentIndex).getAnswer());
+    }
+
+    private static void selectRandomQuestion(JTextArea questionArea, JTextArea answerArea) {
+        if (qaList.isEmpty()) return;
+
+        currentIndex = random.nextInt(qaList.size());
         questionArea.setText(qaList.get(currentIndex).getQuestion());
         answerArea.setText(qaList.get(currentIndex).getAnswer());
     }

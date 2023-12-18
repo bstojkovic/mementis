@@ -10,7 +10,6 @@ import java.util.List;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.event.ActionListener;
 
 import javax.swing.*;
 
@@ -42,7 +41,7 @@ public class HelloWorldSwing {
         loadQAFromFile("QnA.txt");
 
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Question and Answer App");
+            JFrame frame = new JFrame("Mementis");
             frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
             // Creating a panel to hold components
@@ -54,7 +53,7 @@ public class HelloWorldSwing {
             questionArea.setWrapStyleWord(true);
             questionArea.setEditable(false);
             JScrollPane questionScrollPane = new JScrollPane(questionArea);
-            questionScrollPane.setPreferredSize(new Dimension(800, 200));
+            questionScrollPane.setPreferredSize(new Dimension(800, 50));
             panel.add(questionScrollPane, BorderLayout.NORTH);
 
             // Creating the answer area

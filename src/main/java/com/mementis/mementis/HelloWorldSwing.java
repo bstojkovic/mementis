@@ -109,11 +109,21 @@ class QAList {
     }
 }
 
+class TokenState {
+    public static String HIDDEN = "HIDDEN";
+    public static String HIDDEN_HIGHLIGHT = "HIDDEN_HIGHLIGHT";
+    public static String HIGHLIGHTED = "HIGHLIGHTED";
+    public static String RIGHT = "RIGHT";
+    public static String WRONG = "WRONG";
+}
+
 class Token {
     public String text;
+    public String state;
 
     public Token(String tokenString) {
         text = tokenString;
+        state = TokenState.HIDDEN;
     }
 }
 
@@ -193,6 +203,8 @@ public class HelloWorldSwing {
             frame.setVisible(true);
 
             setRandomQA();
+            // TODO: Modify tokens...
+            viewCurrentQA();
         });
     }
 
@@ -202,8 +214,15 @@ public class HelloWorldSwing {
         StringBuffer buffer = new StringBuffer();
         for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
             Token token = currentAnswerTokens.list.get(i);
-            // TODO: Do something with token's properties...
-            buffer.append(token.text);
+
+            String textToInsert = token.text;
+
+            if (token.state == TokenState.HIDDEN) {
+                textToInsert = "_".repeat(token.text.length());
+            }
+
+            buffer.append(textToInsert);
+
             buffer.append(" ");
         }
         answerArea.setText(buffer.toString());
@@ -215,8 +234,6 @@ public class HelloWorldSwing {
         QA qa = qaList.getQA(currentQAIndex);
         currentQuestion = qa.getQuestion();
         currentAnswerTokens = new AnswerTokenizer(qa.getAnswer());
-
-        viewCurrentQA();
     }
 
     private static void setRandomQA() {

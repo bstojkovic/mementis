@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -38,19 +39,113 @@ class QA {
     }
 }
 
-public class HelloWorldSwing {
-
-    private static List<QA> qaList = new ArrayList<>();
-
-    private static int currentIndex = 0;
-    private static boolean wordsRevealed = false;
+class QAList {
+    private static String filePath = "QnA.txt";
     private static Random random = new Random();
 
+    private List<QA> list = new ArrayList<>();
+
+    public void load() {
+        try (InputStream inputStream = HelloWorldSwing.class.getClassLoader().getResourceAsStream(filePath);
+             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+
+            String line;
+            String question = "";
+            String answer = "";
+            boolean isQuestion = true;
+
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    question = question.trim();
+                    answer = answer.trim().replace("\t", "    ");
+
+                    list.add(new QA(question, answer));
+
+                    question = "";
+                    answer = "";
+                    isQuestion = true;
+                } else {
+                    if (isQuestion) {
+                        question += line + "\n";
+                    } else {
+                        answer += line + "\n";
+                    }
+                    isQuestion = false;
+                }
+            }
+
+            // Add the last QA pair if the file does not end with a blank line
+            if (!question.isEmpty() || !answer.isEmpty()) {
+                list.add(new QA(question.trim(), answer.trim()));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public QA getQA(int index) {
+        return list.get(index);
+    }
+
+    public int getRandomQAIndex() {
+        return random.nextInt(list.size());
+    }
+
+    public QA getRandomQA() {
+        return getQA(getRandomQAIndex());
+    }
+
+    public int getIncrementedQAIndex(int current, int increment) {
+        current += increment;
+
+        if (current < 0) {
+            // Roll over to end of list
+            current = list.size() - 1;
+        } else if (current >= list.size()) {
+            current = 0;
+        }
+
+        return current;
+    }
+}
+
+class Token {
+    public String text;
+
+    public Token(String tokenString) {
+        text = tokenString;
+    }
+}
+
+class AnswerTokenizer {
+    public List<Token> list;
+
+    public AnswerTokenizer(String answerString) {
+        list = new ArrayList<Token>();
+
+        String[] words = answerString.split("[ ]+");
+
+        for (int i = 0; i < words.length; i++) {
+            String word = words[i];
+            Token token = new Token(word);
+            list.add(token);
+        }
+    }
+}
+
+public class HelloWorldSwing {
+    private static QAList qaList;
     private static JTextArea questionArea;
     private static JTextPane answerArea;
 
+    private static int currentQAIndex;
+
+    private static String currentQuestion;
+    private static AnswerTokenizer currentAnswerTokens;
+
     public static void main(String[] args) {
-        loadQAFromFile("QnA.txt");
+        qaList = new QAList();
+        qaList.load();
 
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Mementis");
@@ -81,9 +176,9 @@ public class HelloWorldSwing {
             JButton randomButton = new JButton("Random");
 
             // Adding action listeners
-            prevButton.addActionListener(e -> navigateQuestion(-1));
-            nextButton.addActionListener(e -> navigateQuestion(1));
-            randomButton.addActionListener(e -> selectRandomQuestion());
+            prevButton.addActionListener(e -> handlePrevButton());
+            nextButton.addActionListener(e -> handleNextButton());
+            randomButton.addActionListener(e -> handleRandomButton());
 
             // Creating a panel for buttons
             JPanel buttonPanel = new JPanel();
@@ -92,174 +187,57 @@ public class HelloWorldSwing {
             buttonPanel.add(randomButton);
             panel.add(buttonPanel, BorderLayout.SOUTH);
 
-            // Initialize with the first question, if available
-            if (!qaList.isEmpty()) {
-                viewCurrentQuestion();
-            }
-
-            Action spaceBarAction = new AbstractAction() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    if (!wordsRevealed) {
-                        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true, null);
-                        wordsRevealed = true;
-                    } else {
-                        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true, Color.RED);
-                    }
-                }
-            };
-
-            // Action for Enter Key - Mark Words Green
-            Action markGreenAction = new AbstractAction() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    if (wordsRevealed) {
-                        blankOutWordsInPane(answerArea, qaList.get(currentIndex).getAnswer(), true, Color.GREEN);
-                    }
-                }
-            };
-
-            // Set up key bindings for the JTextPane
-            KeyStroke spaceKey = KeyStroke.getKeyStroke("SPACE");
-            KeyStroke enterKey = KeyStroke.getKeyStroke("ENTER");
-
-            InputMap inputMap = answerArea.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-            ActionMap actionMap = answerArea.getActionMap();
-
-            inputMap.put(spaceKey, "spaceKey");
-            inputMap.put(enterKey, "markGreen");
-
-            actionMap.put("spaceKey", spaceBarAction);
-            actionMap.put("markGreen", markGreenAction);
-
             frame.add(panel);
             frame.pack();
             frame.setLocationRelativeTo(null); // center the window
             frame.setVisible(true);
+
+            setRandomQA();
         });
     }
 
-    private static void loadQAFromFile(String filePath) {
-        try (InputStream inputStream = HelloWorldSwing.class.getClassLoader().getResourceAsStream(filePath);
-             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+    private static void viewCurrentQA() {
+        questionArea.setText(String.valueOf(currentQAIndex + 1) + ". " + currentQuestion);
 
-            String line;
-            String question = "";
-            String answer = "";
-            boolean isQuestion = true;
-
-            while ((line = reader.readLine()) != null) {
-                if (line.trim().isEmpty()) {
-                    qaList.add(new QA(question.trim(), answer.trim()));
-                    question = "";
-                    answer = "";
-                    isQuestion = true;
-                } else {
-                    if (isQuestion) {
-                        question += line + "\n";
-                    } else {
-                        answer += line + "\n";
-                    }
-                    isQuestion = false;
-                }
-            }
-
-            // Add the last QA pair if the file does not end with a blank line
-            if (!question.isEmpty() || !answer.isEmpty()) {
-                qaList.add(new QA(question.trim(), answer.trim()));
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+        StringBuffer buffer = new StringBuffer();
+        for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
+            Token token = currentAnswerTokens.list.get(i);
+            // TODO: Do something with token's properties...
+            buffer.append(token.text);
+            buffer.append(" ");
         }
+        answerArea.setText(buffer.toString());
     }
 
-    private static void viewQuestionWithIndex(int index) {
-        questionArea.setText(qaList.get(index).getQuestion());
-        blankOutWordsInPane(answerArea, qaList.get(index).getAnswer(), false, null);
+    private static void setQAWithIndex(int index) {
+        currentQAIndex = index;
+
+        QA qa = qaList.getQA(currentQAIndex);
+        currentQuestion = qa.getQuestion();
+        currentAnswerTokens = new AnswerTokenizer(qa.getAnswer());
+
+        viewCurrentQA();
     }
 
-    private static void viewCurrentQuestion() {
-        viewQuestionWithIndex(currentIndex);
+    private static void setRandomQA() {
+        int randomQAIndex = qaList.getRandomQAIndex();
+        setQAWithIndex(randomQAIndex);
     }
 
-    private static void navigateQuestion(int direction) {
-        // Update the currentIndex based on the direction
-        currentIndex += direction;
-
-        // Check for bounds
-        if (currentIndex < 0) {
-            currentIndex = qaList.size() - 1;
-        } else if (currentIndex >= qaList.size()) {
-            currentIndex = 0;
-        }
-
-        // Set the text area with the new question
-        viewCurrentQuestion();
+    private static void incrementQAIndex(int inc) {
+        int newIndex = qaList.getIncrementedQAIndex(currentQAIndex, inc);
+        setQAWithIndex(newIndex);
     }
 
-    private static void selectRandomQuestion() {
-        if (qaList.isEmpty()) return;
-
-        currentIndex = random.nextInt(qaList.size());
-
-        viewCurrentQuestion();
+    private static void handlePrevButton() {
+        incrementQAIndex(-1);
     }
 
-    private static void blankOutWordsInPane(JTextPane textPane, String answer, boolean revealFirstThree, Color firstThreeWordsColor) {
-        String[] words = answer.split("\\s+");
+    private static void handleNextButton() {
+        incrementQAIndex(1);
+    }
 
-        try {
-            StyledDocument doc = textPane.getStyledDocument();
-
-            Color darkBlue = new Color(0, 0, 139);
-
-            Style regularStyle = textPane.addStyle("RegularStyle", null);
-            StyleConstants.setForeground(regularStyle, Color.BLUE);
-
-            Style highlightedStyle = textPane.addStyle("HighlightedStyle", null);
-            StyleConstants.setBackground(highlightedStyle, darkBlue);
-
-            Style selectedStyle = textPane.addStyle("SelectedStyle", null);
-            StyleConstants.setForeground(selectedStyle, Color.WHITE);
-            StyleConstants.setBackground(selectedStyle, darkBlue);
-
-            if (firstThreeWordsColor == null) {
-                firstThreeWordsColor = Color.BLACK;
-            }
-            Style firstThreeStyle = textPane.addStyle("FirstThreeStyle", null);
-            StyleConstants.setForeground(firstThreeStyle, firstThreeWordsColor); // First three words style
-
-            doc.remove(0, doc.getLength());
-
-            for (int i = 0; i < words.length; i++) {
-                String word = words[i];
-
-                Style style;
-                String text;
-
-                if (i < 3) {
-                    if (revealFirstThree) {
-                        if (firstThreeWordsColor == Color.BLACK) {
-                            style = selectedStyle;
-                            text = " " + word + " ";
-                        } else {
-                            style = firstThreeStyle;
-                            text = word;
-                        }
-                    } else {
-                        style = highlightedStyle;
-                        text = "_".repeat(word.length());
-                    }
-                } else {
-                    style = regularStyle;
-                    text = "_".repeat(word.length());
-                }
-
-                doc.insertString(doc.getLength(), text, style);
-                doc.insertString(doc.getLength(), " ", regularStyle);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    private static void handleRandomButton() {
+        setRandomQA();
     }
 }

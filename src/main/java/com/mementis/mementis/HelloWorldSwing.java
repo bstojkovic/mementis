@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -19,6 +18,7 @@ import javax.swing.*;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
+import javax.swing.text.BadLocationException;
 
 class QA {
     private String question;
@@ -111,10 +111,10 @@ class QAList {
 
 class TokenState {
     public static String HIDDEN = "HIDDEN";
-    public static String HIDDEN_HIGHLIGHT = "HIDDEN_HIGHLIGHT";
     public static String HIGHLIGHTED = "HIGHLIGHTED";
-    public static String RIGHT = "RIGHT";
-    public static String WRONG = "WRONG";
+    public static String SELECTED = "SELECTED";
+    public static String CORRECT = "CORRECT";
+    public static String INCORRECT = "INCORRECT";
 }
 
 class Token {
@@ -202,8 +202,36 @@ public class HelloWorldSwing {
             frame.setLocationRelativeTo(null); // center the window
             frame.setVisible(true);
 
+            Action spaceKeyAction = new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    handleSpaceKey();
+                }
+            };
+
+            Action returnKeyAction = new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    handleEnterKey();
+                }
+            };
+
+            KeyStroke spaceKey = KeyStroke.getKeyStroke("SPACE");
+            KeyStroke returnKey = KeyStroke.getKeyStroke("ENTER");
+
+            InputMap inputMap = answerArea.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+            ActionMap actionMap = answerArea.getActionMap();
+
+            inputMap.put(spaceKey, "spaceKey");
+            inputMap.put(returnKey, "returnKey");
+
+            actionMap.put("spaceKey", spaceKeyAction);
+            actionMap.put("returnKey", returnKeyAction);
+
             setRandomQA();
-            // TODO: Modify tokens...
+            for (int i = 0; i < 3; i++) {
+                currentAnswerTokens.list.get(i).state = TokenState.HIGHLIGHTED;
+            }
             viewCurrentQA();
         });
     }
@@ -211,21 +239,55 @@ public class HelloWorldSwing {
     private static void viewCurrentQA() {
         questionArea.setText(String.valueOf(currentQAIndex + 1) + ". " + currentQuestion);
 
-        StringBuffer buffer = new StringBuffer();
-        for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
-            Token token = currentAnswerTokens.list.get(i);
+        try {
+            StyledDocument doc = answerArea.getStyledDocument();
+            Color darkBlue = new Color(0, 0, 139);
 
-            String textToInsert = token.text;
+            Style regularStyle = answerArea.addStyle("RegularStyle", null);
+            StyleConstants.setForeground(regularStyle, Color.BLUE);
 
-            if (token.state == TokenState.HIDDEN) {
-                textToInsert = "_".repeat(token.text.length());
+            Style highlightedStyle = answerArea.addStyle("HighlightedStyle", null);
+            StyleConstants.setBackground(highlightedStyle, darkBlue);
+
+            Style selectedStyle = answerArea.addStyle("SelectedStyle", null);
+            StyleConstants.setForeground(selectedStyle, Color.WHITE);
+            StyleConstants.setBackground(selectedStyle, darkBlue);
+
+            Style correctStyle = answerArea.addStyle("CorrectStyle", null);
+            StyleConstants.setForeground(correctStyle, Color.GREEN);
+
+            Style incorrectStyle = answerArea.addStyle("IncorrectStyle", null);
+            StyleConstants.setForeground(incorrectStyle, Color.RED);
+
+            doc.remove(0, doc.getLength());
+
+            for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
+                Token token = currentAnswerTokens.list.get(i);
+
+                String textToInsert = token.text;
+                Style style = regularStyle;
+
+                if (token.state == TokenState.HIDDEN) {
+                    textToInsert = "_".repeat(token.text.length());
+                } else if (token.state == TokenState.HIGHLIGHTED) {
+                    textToInsert = "_".repeat(token.text.length());
+                    style = highlightedStyle;
+                } else if (token.state == TokenState.SELECTED) {
+                    style = selectedStyle;
+                } else if (token.state == TokenState.CORRECT) {
+                    style = correctStyle;
+                } else if (token.state == TokenState.INCORRECT) {
+                    style = incorrectStyle;
+                }
+
+                doc.insertString(doc.getLength(), textToInsert, style);
+                doc.insertString(doc.getLength(), " ", regularStyle);
             }
-
-            buffer.append(textToInsert);
-
-            buffer.append(" ");
+        } catch (BadLocationException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        answerArea.setText(buffer.toString());
     }
 
     private static void setQAWithIndex(int index) {
@@ -256,5 +318,29 @@ public class HelloWorldSwing {
 
     private static void handleRandomButton() {
         setRandomQA();
+    }
+
+    private static void handleSpaceKey() {
+        for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
+            Token token = currentAnswerTokens.list.get(i);
+
+            if (token.state == TokenState.HIGHLIGHTED) {
+                token.state = TokenState.SELECTED;
+            } else if (token.state == TokenState.SELECTED) {
+                token.state = TokenState.INCORRECT;
+            }
+        }
+        viewCurrentQA();
+    }
+
+    private static void handleEnterKey() {
+        for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
+            Token token = currentAnswerTokens.list.get(i);
+
+            if (token.state == TokenState.SELECTED) {
+                token.state = TokenState.CORRECT;
+            }
+        }
+        viewCurrentQA();
     }
 }

@@ -133,7 +133,7 @@ class AnswerTokenizer {
     public AnswerTokenizer(String answerString) {
         list = new ArrayList<Token>();
 
-        String[] words = answerString.split("[ ]+");
+        String[] words = answerString.replaceAll("\n", " \n ").split("[ ]+");
 
         for (int i = 0; i < words.length; i++) {
             String word = words[i];
@@ -229,9 +229,6 @@ public class HelloWorldSwing {
             actionMap.put("returnKey", returnKeyAction);
 
             setRandomQA();
-            for (int i = 0; i < 3; i++) {
-                currentAnswerTokens.list.get(i).state = TokenState.HIGHLIGHTED;
-            }
             viewCurrentQA();
         });
     }
@@ -268,9 +265,11 @@ public class HelloWorldSwing {
                 Style style = regularStyle;
 
                 if (token.state == TokenState.HIDDEN) {
-                    textToInsert = "_".repeat(token.text.length());
+                    textToInsert = textToInsert.replaceAll("[^\n\t]", "_");
+                    //textToInsert = "_".repeat(token.text.length());
                 } else if (token.state == TokenState.HIGHLIGHTED) {
-                    textToInsert = "_".repeat(token.text.length());
+                    textToInsert = textToInsert.replaceAll("[^\n\t]", "_");
+                    //textToInsert = "_".repeat(token.text.length());
                     style = highlightedStyle;
                 } else if (token.state == TokenState.SELECTED) {
                     style = selectedStyle;
@@ -281,7 +280,9 @@ public class HelloWorldSwing {
                 }
 
                 doc.insertString(doc.getLength(), textToInsert, style);
-                doc.insertString(doc.getLength(), " ", regularStyle);
+                if (textToInsert != "\n") {
+                    doc.insertString(doc.getLength(), " ", regularStyle);
+                }
             }
         } catch (BadLocationException e) {
             e.printStackTrace();
@@ -296,6 +297,10 @@ public class HelloWorldSwing {
         QA qa = qaList.getQA(currentQAIndex);
         currentQuestion = qa.getQuestion();
         currentAnswerTokens = new AnswerTokenizer(qa.getAnswer());
+
+        for (int i = 0; i < 3; i++) {
+            currentAnswerTokens.list.get(i).state = TokenState.HIGHLIGHTED;
+        }
     }
 
     private static void setRandomQA() {
@@ -310,14 +315,17 @@ public class HelloWorldSwing {
 
     private static void handlePrevButton() {
         incrementQAIndex(-1);
+        viewCurrentQA();
     }
 
     private static void handleNextButton() {
         incrementQAIndex(1);
+        viewCurrentQA();
     }
 
     private static void handleRandomButton() {
         setRandomQA();
+        viewCurrentQA();
     }
 
     private static void handleSpaceKey() {

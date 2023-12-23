@@ -350,16 +350,7 @@ public class HelloWorldSwing {
         currentQuestion = qa.getQuestion();
         currentAnswerTokens = new AnswerTokenizer(qa.getAnswer());
 
-        int numWordTokens = 0;
-        Iterator<Token> it = currentAnswerTokens.list.iterator();
-        while (it.hasNext() && numWordTokens < 3) {
-            Token t = it.next();
-
-            if (t.type == TokenType.WORD) {
-                t.state = TokenState.HIGHLIGHTED;
-                numWordTokens++;
-            }
-        }
+        highlightNextWordTokens(3);
     }
 
     private static void setRandomQA() {
@@ -388,6 +379,8 @@ public class HelloWorldSwing {
     }
 
     private static void handleSpaceKey() {
+        boolean selectNextTokens = false;
+
         for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
             Token token = currentAnswerTokens.list.get(i);
 
@@ -395,19 +388,46 @@ public class HelloWorldSwing {
                 token.state = TokenState.SELECTED;
             } else if (token.state == TokenState.SELECTED) {
                 token.state = TokenState.INCORRECT;
+                selectNextTokens = true;
             }
         }
+
+        if (selectNextTokens) {
+            highlightNextWordTokens(3);
+        }
+
         viewCurrentQA();
     }
 
     private static void handleEnterKey() {
+        boolean selectNextTokens = false;
+
         for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
             Token token = currentAnswerTokens.list.get(i);
 
             if (token.state == TokenState.SELECTED) {
                 token.state = TokenState.CORRECT;
+                selectNextTokens = true;
             }
         }
+
+        if (selectNextTokens) {
+            highlightNextWordTokens(3);
+        }
+
         viewCurrentQA();
+    }
+
+    private static void highlightNextWordTokens(int count) {
+        int numWordTokens = 0;
+        Iterator<Token> it = currentAnswerTokens.list.iterator();
+        while (it.hasNext() && numWordTokens < count) {
+            Token t = it.next();
+
+            if (t.type == TokenType.WORD && t.state == TokenState.HIDDEN) {
+                t.state = TokenState.HIGHLIGHTED;
+                numWordTokens++;
+            }
+        }
     }
 }

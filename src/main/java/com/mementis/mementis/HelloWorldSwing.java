@@ -149,15 +149,15 @@ class AnswerTokenizer {
             char c = answerString.charAt(i);
 
             if (Character.isWhitespace(c)) {
-                if (curTokenType != "whitespace") {
+                if (curTokenType != TokenType.WHITESPACE) {
                     prevTokenType = curTokenType;
-                    curTokenType = "whitespace";
+                    curTokenType = TokenType.WHITESPACE;
                     tokenTypeChanged = true;
                 }
             } else {
-                if (curTokenType != "word") {
+                if (curTokenType != TokenType.WORD) {
                     prevTokenType = curTokenType;
-                    curTokenType = "word";
+                    curTokenType = TokenType.WORD;
                     tokenTypeChanged = true;
                 }
             }
@@ -165,9 +165,9 @@ class AnswerTokenizer {
             if (tokenTypeChanged) {
                 if (buffer.length() != 0) {
                     Token token = new Token(buffer.toString());
-                    if (prevTokenType == "whitespace") {
+                    if (prevTokenType == TokenType.WHITESPACE) {
                         token.type = TokenType.WHITESPACE;
-                    } else if (prevTokenType == "word") {
+                    } else if (prevTokenType == TokenType.WORD) {
                         token.type = TokenType.WORD;
                     }
                     list.add(token);
@@ -184,9 +184,9 @@ class AnswerTokenizer {
 
         if (buffer.length() != 0) {
             Token token = new Token(buffer.toString());
-            if (curTokenType == "whitespace") {
+            if (curTokenType == TokenType.WHITESPACE) {
                 token.type = TokenType.WHITESPACE;
-            } else if (curTokenType == "word") {
+            } else if (curTokenType == TokenType.WORD) {
                 token.type = TokenType.WORD;
             }
             list.add(token);
@@ -468,7 +468,8 @@ public class HelloWorldSwing {
 
                 quickReview = true;
 
-                highlightNextWordTokens(3);
+                setRandomQA();
+                viewCurrentQA();
             }
         }
     }

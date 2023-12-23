@@ -206,6 +206,8 @@ public class HelloWorldSwing {
     private static String currentQuestion;
     private static AnswerTokenizer currentAnswerTokens;
 
+    private static boolean quickReview = true;
+
     public static void main(String[] args) {
         qaList = new QAList();
         qaList.load();
@@ -395,7 +397,11 @@ public class HelloWorldSwing {
         }
 
         if (selectNextTokens) {
-            highlightNextWordTokens(3);
+            if (quickReview) {
+                highlightNextWordTokens(3);
+            } else {
+                highlightNextWordTokens(1);
+            }
         }
 
         viewCurrentQA();
@@ -414,7 +420,11 @@ public class HelloWorldSwing {
         }
 
         if (selectNextTokens) {
-            highlightNextWordTokens(3);
+            if (quickReview) {
+                highlightNextWordTokens(3);
+            } else {
+                highlightNextWordTokens(1);
+            }
         }
 
         viewCurrentQA();
@@ -429,6 +439,36 @@ public class HelloWorldSwing {
             if (t.type == TokenType.WORD && t.state == TokenState.HIDDEN) {
                 t.state = TokenState.HIGHLIGHTED;
                 numWordTokens++;
+            }
+        }
+
+        if (numWordTokens == 0) {
+            boolean anyIncorrectTokens = false;
+            for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
+                Token token = currentAnswerTokens.list.get(i);
+
+                if (token.state == TokenState.INCORRECT) {
+                    anyIncorrectTokens = true;
+                    token.state = TokenState.HIDDEN;
+                }
+            }
+
+            if (anyIncorrectTokens) {
+                quickReview = false;
+
+                highlightNextWordTokens(1);
+            } else {
+                for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
+                    Token token = currentAnswerTokens.list.get(i);
+
+                    if (token.state == TokenState.CORRECT) {
+                        token.state = TokenState.HIDDEN;
+                    }
+                }
+
+                quickReview = true;
+
+                highlightNextWordTokens(3);
             }
         }
     }

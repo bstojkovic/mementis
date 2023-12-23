@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Iterator;
 import java.util.Random;
 
 import java.awt.BorderLayout;
@@ -117,9 +118,15 @@ class TokenState {
     public static String INCORRECT = "INCORRECT";
 }
 
+class TokenType {
+    public static String WORD = "WORD";
+    public static String WHITESPACE = "WHITESPACE";
+}
+
 class Token {
     public String text;
     public String state;
+    public String type;
 
     public Token(String tokenString) {
         text = tokenString;
@@ -133,12 +140,58 @@ class AnswerTokenizer {
     public AnswerTokenizer(String answerString) {
         list = new ArrayList<Token>();
 
-        String[] words = answerString.replaceAll("\n", " \n ").split("[ ]+");
+        boolean tokenTypeChanged = false;
+        String prevTokenType = null;
+        String curTokenType = null;
 
-        for (int i = 0; i < words.length; i++) {
-            String word = words[i];
-            Token token = new Token(word);
+        StringBuffer buffer = new StringBuffer();
+        for (int i = 0; i < answerString.length(); i++) {
+            char c = answerString.charAt(i);
+
+            if (Character.isWhitespace(c)) {
+                if (curTokenType != "whitespace") {
+                    prevTokenType = curTokenType;
+                    curTokenType = "whitespace";
+                    tokenTypeChanged = true;
+                }
+            } else {
+                if (curTokenType != "word") {
+                    prevTokenType = curTokenType;
+                    curTokenType = "word";
+                    tokenTypeChanged = true;
+                }
+            }
+
+            if (tokenTypeChanged) {
+                if (buffer.length() != 0) {
+                    Token token = new Token(buffer.toString());
+                    if (prevTokenType == "whitespace") {
+                        token.type = TokenType.WHITESPACE;
+                    } else if (prevTokenType == "word") {
+                        token.type = TokenType.WORD;
+                    }
+                    list.add(token);
+
+                    buffer.delete(0, buffer.length());
+                }
+
+                prevTokenType = null;
+                tokenTypeChanged = false;
+            }
+
+            buffer.append(c);
+        }
+
+        if (buffer.length() != 0) {
+            Token token = new Token(buffer.toString());
+            if (curTokenType == "whitespace") {
+                token.type = TokenType.WHITESPACE;
+            } else if (curTokenType == "word") {
+                token.type = TokenType.WORD;
+            }
             list.add(token);
+
+            buffer.delete(0, buffer.length());
         }
     }
 }
@@ -261,27 +314,26 @@ public class HelloWorldSwing {
             for (int i = 0; i < currentAnswerTokens.list.size(); i++) {
                 Token token = currentAnswerTokens.list.get(i);
 
-                String textToInsert = token.text;
-                Style style = regularStyle;
+                if (token.type == TokenType.WHITESPACE) {
+                    doc.insertString(doc.getLength(), token.text, regularStyle);
+                } else {
+                    String textToInsert = token.text;
+                    Style style = regularStyle;
 
-                if (token.state == TokenState.HIDDEN) {
-                    textToInsert = textToInsert.replaceAll("[^\n\t]", "_");
-                    //textToInsert = "_".repeat(token.text.length());
-                } else if (token.state == TokenState.HIGHLIGHTED) {
-                    textToInsert = textToInsert.replaceAll("[^\n\t]", "_");
-                    //textToInsert = "_".repeat(token.text.length());
-                    style = highlightedStyle;
-                } else if (token.state == TokenState.SELECTED) {
-                    style = selectedStyle;
-                } else if (token.state == TokenState.CORRECT) {
-                    style = correctStyle;
-                } else if (token.state == TokenState.INCORRECT) {
-                    style = incorrectStyle;
-                }
+                    if (token.state == TokenState.HIDDEN) {
+                        textToInsert = "_".repeat(token.text.length());
+                    } else if (token.state == TokenState.HIGHLIGHTED) {
+                        textToInsert = "_".repeat(token.text.length());
+                        style = highlightedStyle;
+                    } else if (token.state == TokenState.SELECTED) {
+                        style = selectedStyle;
+                    } else if (token.state == TokenState.CORRECT) {
+                        style = correctStyle;
+                    } else if (token.state == TokenState.INCORRECT) {
+                        style = incorrectStyle;
+                    }
 
-                doc.insertString(doc.getLength(), textToInsert, style);
-                if (textToInsert != "\n") {
-                    doc.insertString(doc.getLength(), " ", regularStyle);
+                    doc.insertString(doc.getLength(), textToInsert, style);
                 }
             }
         } catch (BadLocationException e) {
@@ -298,8 +350,15 @@ public class HelloWorldSwing {
         currentQuestion = qa.getQuestion();
         currentAnswerTokens = new AnswerTokenizer(qa.getAnswer());
 
-        for (int i = 0; i < 3; i++) {
-            currentAnswerTokens.list.get(i).state = TokenState.HIGHLIGHTED;
+        int numWordTokens = 0;
+        Iterator<Token> it = currentAnswerTokens.list.iterator();
+        while (it.hasNext() && numWordTokens < 3) {
+            Token t = it.next();
+
+            if (t.type == TokenType.WORD) {
+                t.state = TokenState.HIGHLIGHTED;
+                numWordTokens++;
+            }
         }
     }
 

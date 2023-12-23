@@ -265,14 +265,14 @@ public class HelloWorldSwing {
             Action returnKeyAction = new AbstractAction() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    handleEnterKey();
+                    handleReturnKey();
                 }
             };
 
             KeyStroke spaceKey = KeyStroke.getKeyStroke("SPACE");
             KeyStroke returnKey = KeyStroke.getKeyStroke("ENTER");
 
-            InputMap inputMap = answerArea.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+            InputMap inputMap = answerArea.getInputMap(JComponent.WHEN_FOCUSED);
             ActionMap actionMap = answerArea.getActionMap();
 
             inputMap.put(spaceKey, "spaceKey");
@@ -336,6 +336,8 @@ public class HelloWorldSwing {
                     doc.insertString(doc.getLength(), textToInsert, style);
                 }
             }
+
+            answerArea.grabFocus();
         } catch (BadLocationException e) {
             e.printStackTrace();
         } catch (Exception e) {
@@ -399,7 +401,7 @@ public class HelloWorldSwing {
         viewCurrentQA();
     }
 
-    private static void handleEnterKey() {
+    private static void handleReturnKey() {
         boolean selectNextTokens = false;
 
         for (int i = 0; i < currentAnswerTokens.list.size(); i++) {

@@ -108,6 +108,10 @@ class QAList {
 
         return current;
     }
+
+    public int count() {
+        return list.size();
+    }
 }
 
 class TokenState {
@@ -138,7 +142,7 @@ class AnswerTokenizer {
     public List<Token> list;
 
     public AnswerTokenizer(String answerString) {
-        list = new ArrayList<Token>();
+        list = new ArrayList<>();
 
         boolean tokenTypeChanged = false;
         String prevTokenType = null;
@@ -196,6 +200,79 @@ class AnswerTokenizer {
     }
 }
 
+class LeitnerBox {
+    private static Random random = new Random();
+
+    public int numQuestions;
+    public List<Integer> list;
+
+    public LeitnerBox(int numQuestions) {
+        this.numQuestions = numQuestions;
+        this.list = new ArrayList<>();
+    }
+
+    public Integer popRandom() {
+        int randInt = random.nextInt(list.size());
+        Integer n = list.get(randInt);
+        list.remove(randInt);
+        return n;
+    }
+}
+
+class LeitnerSystem {
+    public static List<LeitnerBox> leitnerBoxes = new ArrayList<>();
+    public static int currentBoxIndex = 0;
+
+    public static void initialize(int numBoxes) {
+        int numQuestions = 5;
+
+        for (int i = 0; i < numBoxes; i++) {
+            LeitnerBox box = new LeitnerBox(numQuestions);
+            leitnerBoxes.add(box);
+            numQuestions *= 2;
+        }
+    }
+
+    public static boolean contains(Object obj) {
+        for (int i = 0; i < leitnerBoxes.size(); i++) {
+            LeitnerBox box = leitnerBoxes.get(i);
+            if (box.list.contains(obj)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static int count() {
+        int n = 0;
+        for (int i = 0; i < leitnerBoxes.size(); i++) {
+            LeitnerBox box = leitnerBoxes.get(i);
+            n += box.list.size();
+        }
+        return n;
+    }
+
+    public static void print() {
+        for (int i = 0; i < leitnerBoxes.size(); i++) {
+            LeitnerBox box = leitnerBoxes.get(i);
+            System.out.println("Box: " + i + "; Size: " + box.numQuestions);
+
+            Iterator<Integer> it;
+            it = box.list.iterator();
+
+            while (it.hasNext()) {
+                Integer qaInteger = it.next();
+                System.out.print(qaInteger);
+                if (it.hasNext()) {
+                    System.out.print(", ");
+                }
+            }
+
+            System.out.print("\n");
+        }
+    }
+}
+
 public class HelloWorldSwing {
     private static QAList qaList;
     private static JTextArea questionArea;
@@ -211,6 +288,8 @@ public class HelloWorldSwing {
     public static void main(String[] args) {
         qaList = new QAList();
         qaList.load();
+
+        initializeLeitnerBoxes();
 
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Mementis");
@@ -283,7 +362,11 @@ public class HelloWorldSwing {
             actionMap.put("spaceKey", spaceKeyAction);
             actionMap.put("returnKey", returnKeyAction);
 
-            setRandomQA();
+            Integer firstQAIndex = LeitnerSystem.leitnerBoxes.get(0).popRandom();
+            System.out.println("Picking next question: " + firstQAIndex);
+
+            //setRandomQA();
+            setQAWithIndex(firstQAIndex);
             viewCurrentQA();
         });
     }
@@ -468,9 +551,82 @@ public class HelloWorldSwing {
 
                 quickReview = true;
 
-                setRandomQA();
-                viewCurrentQA();
+                advanceLeitnerBoxes();
             }
         }
+    }
+
+    private static void initializeLeitnerBoxes() {
+        LeitnerSystem.initialize(6);
+
+        LeitnerBox firstBox = LeitnerSystem.leitnerBoxes.get(0);
+        for (int i = 0; i < firstBox.numQuestions; i++) {
+            addRandomQAToFirstLeitnerBox();
+        }
+    }
+
+    private static boolean addRandomQAToFirstLeitnerBox() {
+        LeitnerBox firstBox = LeitnerSystem.leitnerBoxes.get(0);
+
+        if (LeitnerSystem.count() == qaList.count()) {
+            return false;
+        }
+
+        while (true) {
+            int qaIndex = qaList.getRandomQAIndex();
+
+            if (LeitnerSystem.contains(qaIndex)) {
+                continue;
+            }
+
+            firstBox.list.add(qaIndex);
+
+            return true;
+        }
+    }
+
+    private static void advanceLeitnerBoxes() {
+        if (LeitnerSystem.currentBoxIndex == LeitnerSystem.leitnerBoxes.size() - 1) {
+            System.out.println("ALL DONE");
+            return;
+        }
+
+        LeitnerBox currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
+        LeitnerBox nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
+
+        nextBox.list.add(currentQAIndex);
+        if (LeitnerSystem.currentBoxIndex == 0) {
+            addRandomQAToFirstLeitnerBox();
+        }
+        LeitnerSystem.print();
+
+        if (nextBox.list.size() == nextBox.numQuestions) {
+            System.out.println("ADVANCING TO NEXT BOX");
+            LeitnerSystem.currentBoxIndex++;
+        }
+
+        if (currentBox.list.isEmpty()) {
+            LeitnerSystem.currentBoxIndex = 0;
+            while (LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex).list.isEmpty()) {
+                LeitnerSystem.currentBoxIndex++;
+            }
+        }
+
+        if (LeitnerSystem.currentBoxIndex == LeitnerSystem.leitnerBoxes.size() - 1) {
+            return;
+        }
+
+        currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
+        nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
+        while (nextBox.list.size() == nextBox.numQuestions) {
+            LeitnerSystem.currentBoxIndex++;
+            currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
+            nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
+        }
+        Integer firstQAIndex = currentBox.popRandom();
+
+        //setRandomQA();
+        setQAWithIndex(firstQAIndex);
+        viewCurrentQA();
     }
 }

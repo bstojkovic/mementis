@@ -1,10 +1,6 @@
 package com.mementis.mementis;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
@@ -255,7 +251,11 @@ class LeitnerSystem {
     public static void print() {
         for (int i = 0; i < leitnerBoxes.size(); i++) {
             LeitnerBox box = leitnerBoxes.get(i);
-            System.out.println("Box: " + i + "; Size: " + box.numQuestions);
+            System.out.print("Box: " + i + "; Size: " + box.numQuestions);
+            if (i == LeitnerSystem.currentBoxIndex) {
+                System.out.print(" <<<");
+            }
+            System.out.print("\n");
 
             Iterator<Integer> it;
             it = box.list.iterator();
@@ -362,10 +362,11 @@ public class HelloWorldSwing {
             actionMap.put("spaceKey", spaceKeyAction);
             actionMap.put("returnKey", returnKeyAction);
 
-            Integer firstQAIndex = LeitnerSystem.leitnerBoxes.get(0).popRandom();
+            Integer firstQAIndex = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex).popRandom();
             System.out.println("Picking next question: " + firstQAIndex);
 
-            //setRandomQA();
+            LeitnerSystem.print();
+
             setQAWithIndex(firstQAIndex);
             viewCurrentQA();
         });
@@ -515,11 +516,18 @@ public class HelloWorldSwing {
 
     private static void highlightNextWordTokens(int count) {
         int numWordTokens = 0;
+        boolean encounteredWordToken = false;
+
         Iterator<Token> it = currentAnswerTokens.list.iterator();
         while (it.hasNext() && numWordTokens < count) {
             Token t = it.next();
 
+            if (encounteredWordToken && t.text.equals("\n")) {
+                break;
+            }
+
             if (t.type == TokenType.WORD && t.state == TokenState.HIDDEN) {
+                encounteredWordToken = true;
                 t.state = TokenState.HIGHLIGHTED;
                 numWordTokens++;
             }
@@ -556,12 +564,82 @@ public class HelloWorldSwing {
         }
     }
 
+    private static boolean loadLeitnerBoxes() {
+        File file = new File("leitner.txt");
+        FileReader fileReader;
+
+        try {
+            fileReader = new FileReader(file);
+        } catch (FileNotFoundException e) {
+            System.out.println("LEITNER FILE NOT FOUND");
+            return false;
+        }
+
+        try (BufferedReader reader = new BufferedReader(fileReader)) {
+            int lineIndex = 0;
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                if (lineIndex == 0) {
+                    LeitnerSystem.currentBoxIndex = Integer.valueOf(line);
+                } else if (!line.equals("")) {
+                    String[] qaIndexes = line.split(",");
+                    for (int i = 0; i < qaIndexes.length; i++) {
+                        int qaIndex = Integer.valueOf(qaIndexes[i]);
+                        LeitnerSystem.leitnerBoxes.get(lineIndex - 1).list.add(qaIndex);
+                    }
+                }
+                lineIndex++;
+            }
+
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    private static boolean saveLeitnerBoxes() {
+        try {
+            File file = new File("leitner.txt");
+            FileWriter fileWriter = new FileWriter(file);
+
+            fileWriter.write(LeitnerSystem.currentBoxIndex + "\n");
+
+            for (int i = 0; i < LeitnerSystem.leitnerBoxes.size(); i++) {
+                LeitnerBox box = LeitnerSystem.leitnerBoxes.get(i);
+
+                for (int j = 0; j < box.list.size(); j++) {
+                    fileWriter.write(String.valueOf(box.list.get(j)));
+                    if (j != box.list.size() - 1) {
+                        fileWriter.write(",");
+                    }
+                }
+                fileWriter.write("\n");
+            }
+
+            fileWriter.close();
+
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
     private static void initializeLeitnerBoxes() {
         LeitnerSystem.initialize(6);
 
-        LeitnerBox firstBox = LeitnerSystem.leitnerBoxes.get(0);
-        for (int i = 0; i < firstBox.numQuestions; i++) {
-            addRandomQAToFirstLeitnerBox();
+        boolean loadSuccess = loadLeitnerBoxes();
+
+        if (!loadSuccess) {
+            LeitnerBox firstBox = LeitnerSystem.leitnerBoxes.get(0);
+            for (int i = 0; i < firstBox.numQuestions; i++) {
+                addRandomQAToFirstLeitnerBox();
+            }
+            saveLeitnerBoxes();
         }
     }
 
@@ -598,7 +676,6 @@ public class HelloWorldSwing {
         if (LeitnerSystem.currentBoxIndex == 0) {
             addRandomQAToFirstLeitnerBox();
         }
-        LeitnerSystem.print();
 
         if (nextBox.list.size() == nextBox.numQuestions) {
             System.out.println("ADVANCING TO NEXT BOX");
@@ -623,6 +700,10 @@ public class HelloWorldSwing {
             currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
             nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
         }
+
+        LeitnerSystem.print();
+        saveLeitnerBoxes();
+
         Integer firstQAIndex = currentBox.popRandom();
 
         //setRandomQA();

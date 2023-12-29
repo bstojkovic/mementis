@@ -38,3 +38,4 @@ out/
 
 ### Question and answer file ###
 /src/main/resources/QnA.txt
+/leitner.txt

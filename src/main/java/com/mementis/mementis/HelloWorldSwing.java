@@ -17,14 +17,6 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import javax.swing.text.BadLocationException;
 
-/*
- * TODO:
- * - Put immediately correct answers 2 boxes away
- * - Put other answers 1 box away
- * - If an answer was not immediately correct and was incorrect 2 times in a row, it remains in the current box until
- *     it is answered correctly 2 times in a row
- */
-
 class QA {
     private String question;
     private String answer;
@@ -115,6 +107,157 @@ class QAList {
 
     public int count() {
         return list.size();
+    }
+}
+
+class QAWrapper {
+    public int qaIndex;
+
+    QAWrapper(int index) {
+        qaIndex = index;
+    }
+}
+
+class QABoxes {
+    private static Random random = new Random();
+
+    private static List<QAWrapper> currentBox = new ArrayList<>();
+    private static List<QAWrapper> reviseBox = new ArrayList<>();
+    private static List<QAWrapper> finalBox = new ArrayList<>();
+
+    public static boolean addQAIndex(int index) {
+        if (getWrapperFromIndex(index) != null) {
+            return false;
+        }
+
+        QAWrapper wrapper = new QAWrapper(index);
+        currentBox.add(wrapper);
+
+        return true;
+    }
+
+    public static int getRandomQAIndex() {
+        int randomIndex = random.nextInt(currentBox.size());
+        QAWrapper wrapper = currentBox.get(randomIndex);
+        return wrapper.qaIndex;
+    }
+
+    public static boolean containsQAIndex(int index) {
+        for (QAWrapper wrapper : currentBox) {
+            if (wrapper.qaIndex == index) {
+                return true;
+            }
+        }
+
+        for (QAWrapper wrapper : reviseBox) {
+            if (wrapper.qaIndex == index) {
+                return true;
+            }
+        }
+
+        for (QAWrapper wrapper : finalBox) {
+            if (wrapper.qaIndex == index) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static int countQAIndexes() {
+        return currentBox.size() + reviseBox.size() + finalBox.size();
+    }
+
+    public static int currentBoxCount() {
+        return currentBox.size();
+    }
+
+    public static int reviseBoxCount() {
+        return reviseBox.size();
+    }
+
+    public static int finalBoxCount() {
+        return finalBox.size();
+    }
+
+    public static boolean firstBoxIsEmpty() {
+        return currentBox.isEmpty();
+    }
+
+    private static QAWrapper getWrapperFromIndex(int index) {
+        for (QAWrapper wrapper : currentBox) {
+            if (wrapper.qaIndex == index) {
+                return wrapper;
+            }
+        }
+        return null;
+    }
+
+    public static void advanceQAIndex(int index) {
+        QAWrapper wrapper = getWrapperFromIndex(index);
+        if (wrapper == null) {
+            System.out.println("Tried to advance null for index '" + String.valueOf(index) + "'");
+            return;
+        }
+        currentBox.remove(wrapper);
+        finalBox.add(wrapper);
+    }
+
+    public static void reviseQAIndex(int index) {
+        QAWrapper wrapper = getWrapperFromIndex(index);
+        if (wrapper == null) {
+            System.out.println("Tried to revise null for index '" + String.valueOf(index) + "'");
+            return;
+        }
+        currentBox.remove(wrapper);
+        reviseBox.add(wrapper);
+    }
+
+    public static void advanceBoxes() {
+        Iterator<QAWrapper> it;
+
+        if (reviseBox.isEmpty()) {
+            it = finalBox.iterator();
+            while (it.hasNext()) {
+                QAWrapper wrapper = it.next();
+                currentBox.add(wrapper);
+                it.remove();
+            }
+        } else {
+            it = reviseBox.iterator();
+            while (it.hasNext()) {
+                QAWrapper wrapper = it.next();
+                currentBox.add(wrapper);
+                it.remove();
+            }
+
+            it = finalBox.iterator();
+            while (it.hasNext()) {
+                QAWrapper wrapper = it.next();
+                reviseBox.add(wrapper);
+                it.remove();
+            }
+        }
+    }
+
+    public static void print() {
+        System.out.print("Current (" + currentBox.size() + "): ");
+        for (QAWrapper wrapper : currentBox) {
+            System.out.print(wrapper.qaIndex + ", ");
+        }
+        System.out.print("\n");
+
+        System.out.print("Revise (" + reviseBox.size() + "): ");
+        for (QAWrapper wrapper : reviseBox) {
+            System.out.print(wrapper.qaIndex + ", ");
+        }
+        System.out.print("\n");
+
+        System.out.print("Final (" + finalBox.size() + "): ");
+        for (QAWrapper wrapper : finalBox) {
+            System.out.print(wrapper.qaIndex + ", ");
+        }
+        System.out.print("\n");
     }
 }
 
@@ -215,11 +358,9 @@ public class HelloWorldSwing {
     private static AnswerTokenizer currentAnswerTokens;
 
     private static boolean quickReview = true;
+    private static boolean correctOnFirstTry = true;
 
     public static void main(String[] args) {
-        qaList = new QAList();
-        qaList.load();
-
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Mementis");
             frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -291,7 +432,16 @@ public class HelloWorldSwing {
             actionMap.put("spaceKey", spaceKeyAction);
             actionMap.put("returnKey", returnKeyAction);
 
-            setRandomQA();
+            // Initialize QA's
+
+            qaList = new QAList();
+            qaList.load();
+
+            for (int i = 0; i < 5; i++) {
+                addRandomQAToFirstBox();
+            }
+
+            setQAWithIndex(QABoxes.getRandomQAIndex());
             viewCurrentQA();
         });
     }
@@ -402,6 +552,12 @@ public class HelloWorldSwing {
                 token.state = TokenState.INCORRECT;
                 selectNextTokens = true;
             }
+
+            /* DEBUG
+            selectNextTokens = true;
+            token.state = TokenState.CORRECT;
+            correctOnFirstTry = false;
+            */
         }
 
         if (selectNextTokens) {
@@ -425,6 +581,11 @@ public class HelloWorldSwing {
                 token.state = TokenState.CORRECT;
                 selectNextTokens = true;
             }
+
+            /* DEBUG
+            selectNextTokens = true;
+            token.state = TokenState.CORRECT;
+            */
         }
 
         if (selectNextTokens) {
@@ -482,14 +643,62 @@ public class HelloWorldSwing {
                 }
 
                 if (quickReview) {
-                    setRandomQA();
+                    if (correctOnFirstTry) {
+                        QABoxes.advanceQAIndex(currentQAIndex);
+                    } else {
+                        QABoxes.reviseQAIndex(currentQAIndex);
+                    }
+                    correctOnFirstTry = true;
+
+                    boolean alreadyAdvancedBoxes = false;
+                    if (QABoxes.currentBoxCount() < 5) {
+                        boolean addSuccessful = addRandomQAToFirstBox();
+                        if (!addSuccessful) {
+                            if (QABoxes.firstBoxIsEmpty()) {
+                                QABoxes.advanceBoxes();
+                                alreadyAdvancedBoxes = true;
+                            }
+                        }
+                    }
+
+                    if (!alreadyAdvancedBoxes && QABoxes.reviseBoxCount() >= 10) {
+                        QABoxes.advanceBoxes();
+                    }
+
+                    setQAWithIndex(QABoxes.getRandomQAIndex());
                 } else {
+                    // Reset the current question
                     setQAWithIndex(currentQAIndex);
+
+                    correctOnFirstTry = false;
+                    quickReview = true;
                 }
 
-                quickReview = true;
                 viewCurrentQA();
+
+                System.out.println();
+                System.out.println("===================================");
+                System.out.println();
+                QABoxes.print();
             }
+        }
+    }
+
+    public static boolean addRandomQAToFirstBox() {
+        if (QABoxes.countQAIndexes() == qaList.count()) {
+            return false;
+        }
+
+        while (true) {
+            int randomQAIndex = qaList.getRandomQAIndex();
+
+            if (QABoxes.containsQAIndex(randomQAIndex)) {
+                continue;
+            }
+
+            QABoxes.addQAIndex(randomQAIndex);
+
+            return true;
         }
     }
 }

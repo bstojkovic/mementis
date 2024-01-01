@@ -19,10 +19,9 @@ import javax.swing.text.BadLocationException;
 
 /*
  * TODO:
- * - Don't advance the question until the whole answer is answered correctly
  * - Put immediately correct answers 2 boxes away
  * - Put other answers 1 box away
- * - If an answer was not immediately correct 2 times in a row, it remains in the current box until
+ * - If an answer was not immediately correct and was incorrect 2 times in a row, it remains in the current box until
  *     it is answered correctly 2 times in a row
  */
 
@@ -482,9 +481,13 @@ public class HelloWorldSwing {
                     }
                 }
 
-                quickReview = true;
+                if (quickReview) {
+                    setRandomQA();
+                } else {
+                    setQAWithIndex(currentQAIndex);
+                }
 
-                setRandomQA();
+                quickReview = true;
                 viewCurrentQA();
             }
         }

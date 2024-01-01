@@ -17,6 +17,15 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import javax.swing.text.BadLocationException;
 
+/*
+ * TODO:
+ * - Don't advance the question until the whole answer is answered correctly
+ * - Put immediately correct answers 2 boxes away
+ * - Put other answers 1 box away
+ * - If an answer was not immediately correct 2 times in a row, it remains in the current box until
+ *     it is answered correctly 2 times in a row
+ */
+
 class QA {
     private String question;
     private String answer;
@@ -196,83 +205,6 @@ class AnswerTokenizer {
     }
 }
 
-class LeitnerBox {
-    private static Random random = new Random();
-
-    public int numQuestions;
-    public List<Integer> list;
-
-    public LeitnerBox(int numQuestions) {
-        this.numQuestions = numQuestions;
-        this.list = new ArrayList<>();
-    }
-
-    public Integer popRandom() {
-        int randInt = random.nextInt(list.size());
-        Integer n = list.get(randInt);
-        list.remove(randInt);
-        return n;
-    }
-}
-
-class LeitnerSystem {
-    public static List<LeitnerBox> leitnerBoxes = new ArrayList<>();
-    public static int currentBoxIndex = 0;
-
-    public static void initialize(int numBoxes) {
-        int numQuestions = 5;
-
-        for (int i = 0; i < numBoxes; i++) {
-            LeitnerBox box = new LeitnerBox(numQuestions);
-            leitnerBoxes.add(box);
-            numQuestions *= 2;
-        }
-    }
-
-    public static boolean contains(Object obj) {
-        for (int i = 0; i < leitnerBoxes.size(); i++) {
-            LeitnerBox box = leitnerBoxes.get(i);
-            if (box.list.contains(obj)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static int count() {
-        int n = 0;
-        for (int i = 0; i < leitnerBoxes.size(); i++) {
-            LeitnerBox box = leitnerBoxes.get(i);
-            n += box.list.size();
-        }
-        return n;
-    }
-
-    public static void print() {
-        for (int i = 0; i < leitnerBoxes.size(); i++) {
-            LeitnerBox box = leitnerBoxes.get(i);
-            System.out.print("Box: " + i + "; Size: " + box.numQuestions);
-            if (i == LeitnerSystem.currentBoxIndex) {
-                System.out.print(" <<<");
-            }
-            System.out.print("\n");
-
-            Iterator<Integer> it;
-            it = box.list.iterator();
-
-            while (it.hasNext()) {
-                Integer qaInteger = it.next();
-                System.out.print(qaInteger);
-                if (it.hasNext()) {
-                    System.out.print(", ");
-                }
-            }
-
-            System.out.print("\n");
-        }
-    }
-}
-
 public class HelloWorldSwing {
     private static QAList qaList;
     private static JTextArea questionArea;
@@ -288,8 +220,6 @@ public class HelloWorldSwing {
     public static void main(String[] args) {
         qaList = new QAList();
         qaList.load();
-
-        initializeLeitnerBoxes();
 
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Mementis");
@@ -362,12 +292,7 @@ public class HelloWorldSwing {
             actionMap.put("spaceKey", spaceKeyAction);
             actionMap.put("returnKey", returnKeyAction);
 
-            Integer firstQAIndex = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex).popRandom();
-            System.out.println("Picking next question: " + firstQAIndex);
-
-            LeitnerSystem.print();
-
-            setQAWithIndex(firstQAIndex);
+            setRandomQA();
             viewCurrentQA();
         });
     }
@@ -559,155 +484,9 @@ public class HelloWorldSwing {
 
                 quickReview = true;
 
-                advanceLeitnerBoxes();
+                setRandomQA();
+                viewCurrentQA();
             }
         }
-    }
-
-    private static boolean loadLeitnerBoxes() {
-        File file = new File("leitner.txt");
-        FileReader fileReader;
-
-        try {
-            fileReader = new FileReader(file);
-        } catch (FileNotFoundException e) {
-            System.out.println("LEITNER FILE NOT FOUND");
-            return false;
-        }
-
-        try (BufferedReader reader = new BufferedReader(fileReader)) {
-            int lineIndex = 0;
-            String line;
-
-            while ((line = reader.readLine()) != null) {
-                if (lineIndex == 0) {
-                    LeitnerSystem.currentBoxIndex = Integer.valueOf(line);
-                } else if (!line.equals("")) {
-                    String[] qaIndexes = line.split(",");
-                    for (int i = 0; i < qaIndexes.length; i++) {
-                        int qaIndex = Integer.valueOf(qaIndexes[i]);
-                        LeitnerSystem.leitnerBoxes.get(lineIndex - 1).list.add(qaIndex);
-                    }
-                }
-                lineIndex++;
-            }
-
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    private static boolean saveLeitnerBoxes() {
-        try {
-            File file = new File("leitner.txt");
-            FileWriter fileWriter = new FileWriter(file);
-
-            fileWriter.write(LeitnerSystem.currentBoxIndex + "\n");
-
-            for (int i = 0; i < LeitnerSystem.leitnerBoxes.size(); i++) {
-                LeitnerBox box = LeitnerSystem.leitnerBoxes.get(i);
-
-                for (int j = 0; j < box.list.size(); j++) {
-                    fileWriter.write(String.valueOf(box.list.get(j)));
-                    if (j != box.list.size() - 1) {
-                        fileWriter.write(",");
-                    }
-                }
-                fileWriter.write("\n");
-            }
-
-            fileWriter.close();
-
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    private static void initializeLeitnerBoxes() {
-        LeitnerSystem.initialize(6);
-
-        boolean loadSuccess = loadLeitnerBoxes();
-
-        if (!loadSuccess) {
-            LeitnerBox firstBox = LeitnerSystem.leitnerBoxes.get(0);
-            for (int i = 0; i < firstBox.numQuestions; i++) {
-                addRandomQAToFirstLeitnerBox();
-            }
-            saveLeitnerBoxes();
-        }
-    }
-
-    private static boolean addRandomQAToFirstLeitnerBox() {
-        LeitnerBox firstBox = LeitnerSystem.leitnerBoxes.get(0);
-
-        if (LeitnerSystem.count() == qaList.count()) {
-            return false;
-        }
-
-        while (true) {
-            int qaIndex = qaList.getRandomQAIndex();
-
-            if (LeitnerSystem.contains(qaIndex)) {
-                continue;
-            }
-
-            firstBox.list.add(qaIndex);
-
-            return true;
-        }
-    }
-
-    private static void advanceLeitnerBoxes() {
-        if (LeitnerSystem.currentBoxIndex == LeitnerSystem.leitnerBoxes.size() - 1) {
-            System.out.println("ALL DONE");
-            return;
-        }
-
-        LeitnerBox currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
-        LeitnerBox nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
-
-        nextBox.list.add(currentQAIndex);
-        if (LeitnerSystem.currentBoxIndex == 0) {
-            addRandomQAToFirstLeitnerBox();
-        }
-
-        if (nextBox.list.size() == nextBox.numQuestions) {
-            System.out.println("ADVANCING TO NEXT BOX");
-            LeitnerSystem.currentBoxIndex++;
-        }
-
-        if (currentBox.list.isEmpty()) {
-            LeitnerSystem.currentBoxIndex = 0;
-            while (LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex).list.isEmpty()) {
-                LeitnerSystem.currentBoxIndex++;
-            }
-        }
-
-        if (LeitnerSystem.currentBoxIndex == LeitnerSystem.leitnerBoxes.size() - 1) {
-            return;
-        }
-
-        currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
-        nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
-        while (nextBox.list.size() == nextBox.numQuestions) {
-            LeitnerSystem.currentBoxIndex++;
-            currentBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex);
-            nextBox = LeitnerSystem.leitnerBoxes.get(LeitnerSystem.currentBoxIndex + 1);
-        }
-
-        LeitnerSystem.print();
-        saveLeitnerBoxes();
-
-        Integer firstQAIndex = currentBox.popRandom();
-
-        //setRandomQA();
-        setQAWithIndex(firstQAIndex);
-        viewCurrentQA();
     }
 }

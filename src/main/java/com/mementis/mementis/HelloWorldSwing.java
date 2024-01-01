@@ -112,6 +112,7 @@ class QAList {
 
 class QAWrapper {
     public int qaIndex;
+    public int correctInRow = 0;
 
     QAWrapper(int index) {
         qaIndex = index;
@@ -201,6 +202,7 @@ class QABoxes {
         }
         currentBox.remove(wrapper);
         finalBox.add(wrapper);
+        wrapper.correctInRow++;
     }
 
     public static void reviseQAIndex(int index) {
@@ -211,6 +213,7 @@ class QABoxes {
         }
         currentBox.remove(wrapper);
         reviseBox.add(wrapper);
+        wrapper.correctInRow = 0;
     }
 
     public static void advanceBoxes() {
@@ -240,24 +243,147 @@ class QABoxes {
         }
     }
 
+    public static void advanceBoxesPartially() {
+        Iterator<QAWrapper> it;
+
+        if (reviseBox.isEmpty()) {
+            it = finalBox.iterator();
+            while (it.hasNext()) {
+                QAWrapper wrapper = it.next();
+                currentBox.add(wrapper);
+                it.remove();
+            }
+        } else {
+            it = reviseBox.iterator();
+            while (it.hasNext()) {
+                QAWrapper wrapper = it.next();
+                currentBox.add(wrapper);
+                it.remove();
+            }
+
+            int numFinalMoved = 0;
+            it = finalBox.iterator();
+            while (it.hasNext() && numFinalMoved < 5) {
+                QAWrapper wrapper = it.next();
+                if (wrapper.correctInRow <= 2) {
+                    reviseBox.add(wrapper);
+                    it.remove();
+                    numFinalMoved++;
+                }
+            }
+        }
+    }
+
     public static void print() {
         System.out.print("Current (" + currentBox.size() + "): ");
         for (QAWrapper wrapper : currentBox) {
-            System.out.print(wrapper.qaIndex + ", ");
+            System.out.print(wrapper.qaIndex + " (" + wrapper.correctInRow + ")" + ", ");
         }
         System.out.print("\n");
 
         System.out.print("Revise (" + reviseBox.size() + "): ");
         for (QAWrapper wrapper : reviseBox) {
-            System.out.print(wrapper.qaIndex + ", ");
+            System.out.print(wrapper.qaIndex + " (" + wrapper.correctInRow + ")" + ", ");
         }
         System.out.print("\n");
 
         System.out.print("Final (" + finalBox.size() + "): ");
         for (QAWrapper wrapper : finalBox) {
-            System.out.print(wrapper.qaIndex + ", ");
+            System.out.print(wrapper.qaIndex + " (" + wrapper.correctInRow + ")" + ", ");
         }
         System.out.print("\n");
+    }
+
+    public static void save() {
+        File path = new File("boxes.txt");
+        try {
+            FileWriter writer = new FileWriter(path);
+
+            for (int i = 0; i < currentBox.size(); i++) {
+                QAWrapper wrapper = currentBox.get(i);
+                writer.write(wrapper.qaIndex + ":" + wrapper.correctInRow);
+                if (i < currentBox.size() - 1) {
+                    writer.write(",");
+                }
+            }
+            writer.write("\n");
+            for (int i = 0; i < reviseBox.size(); i++) {
+                QAWrapper wrapper = reviseBox.get(i);
+                writer.write(wrapper.qaIndex + ":" + wrapper.correctInRow);
+                if (i < reviseBox.size() - 1) {
+                    writer.write(",");
+                }
+            }
+            writer.write("\n");
+            for (int i = 0; i < finalBox.size(); i++) {
+                QAWrapper wrapper = finalBox.get(i);
+                writer.write(wrapper.qaIndex + ":" + wrapper.correctInRow);
+                if (i < finalBox.size() - 1) {
+                    writer.write(",");
+                }
+            }
+            writer.write("\n");
+
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean load() {
+        File path = new File("boxes.txt");
+        try {
+            FileReader reader = new FileReader(path);
+            BufferedReader bufferedReader = new BufferedReader(reader);
+
+            String currentBoxString = bufferedReader.readLine();
+            if (!currentBoxString.equals("")) {
+                String[] currentBoxWrappers = currentBoxString.split(",");
+                for (int i = 0; i < currentBoxWrappers.length; i++) {
+                    String[] wrapperProps = currentBoxWrappers[i].split(":");
+                    int wrapperIndex = Integer.parseInt(wrapperProps[0]);
+                    int wrapperCorrect = Integer.parseInt(wrapperProps[1]);
+                    QAWrapper wrapper = new QAWrapper(wrapperIndex);
+                    wrapper.correctInRow = wrapperCorrect;
+                    currentBox.add(wrapper);
+                }
+            }
+
+            String reviseBoxString = bufferedReader.readLine();
+            if (!reviseBoxString.equals("")) {
+                String[] reviseBoxWrappers = reviseBoxString.split(",");
+                for (int i = 0; i < reviseBoxWrappers.length; i++) {
+                    String[] wrapperProps = reviseBoxWrappers[i].split(":");
+                    int wrapperIndex = Integer.parseInt(wrapperProps[0]);
+                    int wrapperCorrect = Integer.parseInt(wrapperProps[1]);
+                    QAWrapper wrapper = new QAWrapper(wrapperIndex);
+                    wrapper.correctInRow = wrapperCorrect;
+                    reviseBox.add(wrapper);
+                }
+            }
+
+            String finalBoxString = bufferedReader.readLine();
+            if (!finalBoxString.equals("")) {
+                String[] finalBoxWrappers = finalBoxString.split(",");
+                for (int i = 0; i < finalBoxWrappers.length; i++) {
+                    System.out.println("'" + finalBoxString + "'");
+                    String[] wrapperProps = finalBoxWrappers[i].split(":");
+                    int wrapperIndex = Integer.parseInt(wrapperProps[0]);
+                    int wrapperCorrect = Integer.parseInt(wrapperProps[1]);
+                    QAWrapper wrapper = new QAWrapper(wrapperIndex);
+                    wrapper.correctInRow = wrapperCorrect;
+                    finalBox.add(wrapper);
+                }
+            }
+
+            bufferedReader.close();
+            reader.close();
+
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
 
@@ -437,9 +563,15 @@ public class HelloWorldSwing {
             qaList = new QAList();
             qaList.load();
 
-            for (int i = 0; i < 5; i++) {
-                addRandomQAToFirstBox();
+            boolean loadSuccessful = QABoxes.load();
+
+            if (!loadSuccessful) {
+                for (int i = 0; i < 5; i++) {
+                    addRandomQAToFirstBox();
+                }
             }
+
+            QABoxes.print();
 
             setQAWithIndex(QABoxes.getRandomQAIndex());
             viewCurrentQA();
@@ -557,7 +689,7 @@ public class HelloWorldSwing {
             selectNextTokens = true;
             token.state = TokenState.CORRECT;
             correctOnFirstTry = false;
-            */
+            // */
         }
 
         if (selectNextTokens) {
@@ -585,7 +717,7 @@ public class HelloWorldSwing {
             /* DEBUG
             selectNextTokens = true;
             token.state = TokenState.CORRECT;
-            */
+            // */
         }
 
         if (selectNextTokens) {
@@ -662,7 +794,7 @@ public class HelloWorldSwing {
                     }
 
                     if (!alreadyAdvancedBoxes && QABoxes.reviseBoxCount() >= 10) {
-                        QABoxes.advanceBoxes();
+                        QABoxes.advanceBoxesPartially();
                     }
 
                     setQAWithIndex(QABoxes.getRandomQAIndex());
@@ -680,6 +812,8 @@ public class HelloWorldSwing {
                 System.out.println("===================================");
                 System.out.println();
                 QABoxes.print();
+
+                QABoxes.save();
             }
         }
     }

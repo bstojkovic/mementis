@@ -332,6 +332,10 @@ class QABoxes {
 
     public static boolean load() {
         File path = new File("boxes.txt");
+        if (!path.exists()) {
+            return false;
+        }
+
         try {
             FileReader reader = new FileReader(path);
             BufferedReader bufferedReader = new BufferedReader(reader);
@@ -380,6 +384,8 @@ class QABoxes {
             reader.close();
 
             return true;
+        } catch (FileNotFoundException e) {
+            return false;
         } catch (IOException e) {
             e.printStackTrace();
         }

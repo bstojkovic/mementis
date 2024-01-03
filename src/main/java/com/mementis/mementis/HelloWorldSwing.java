@@ -237,8 +237,10 @@ class QABoxes {
             it = finalBox.iterator();
             while (it.hasNext()) {
                 QAWrapper wrapper = it.next();
-                reviseBox.add(wrapper);
-                it.remove();
+                if (wrapper.correctInRow <= 2) {
+                    reviseBox.add(wrapper);
+                    it.remove();
+                }
             }
         }
     }
@@ -275,23 +277,60 @@ class QABoxes {
     }
 
     public static void print() {
+        int poor = 0;
+        int fair = 0;
+        int good = 0;
+        int excellent = 0;
+
         System.out.print("Current (" + currentBox.size() + "): ");
         for (QAWrapper wrapper : currentBox) {
+            if (wrapper.correctInRow == 0) {
+                poor++;
+            } else if (wrapper.correctInRow == 1) {
+                fair++;
+            } else if (wrapper.correctInRow == 2) {
+                good++;
+            } else if (wrapper.correctInRow == 3) {
+                excellent++;
+            }
             System.out.print(wrapper.qaIndex + " (" + wrapper.correctInRow + ")" + ", ");
         }
         System.out.print("\n");
 
         System.out.print("Revise (" + reviseBox.size() + "): ");
         for (QAWrapper wrapper : reviseBox) {
+            if (wrapper.correctInRow == 0) {
+                poor++;
+            } else if (wrapper.correctInRow == 1) {
+                fair++;
+            } else if (wrapper.correctInRow == 2) {
+                good++;
+            } else if (wrapper.correctInRow == 3) {
+                excellent++;
+            }
             System.out.print(wrapper.qaIndex + " (" + wrapper.correctInRow + ")" + ", ");
         }
         System.out.print("\n");
 
         System.out.print("Final (" + finalBox.size() + "): ");
         for (QAWrapper wrapper : finalBox) {
+            if (wrapper.correctInRow == 0) {
+                poor++;
+            } else if (wrapper.correctInRow == 1) {
+                fair++;
+            } else if (wrapper.correctInRow == 2) {
+                good++;
+            } else if (wrapper.correctInRow == 3) {
+                excellent++;
+            }
             System.out.print(wrapper.qaIndex + " (" + wrapper.correctInRow + ")" + ", ");
         }
         System.out.print("\n");
+
+        System.out.println("Poor: " + poor);
+        System.out.println("Fair: " + fair);
+        System.out.println("Good: " + good);
+        System.out.println("Excellent: " + excellent);
     }
 
     public static void save() {
@@ -370,7 +409,6 @@ class QABoxes {
             if (!finalBoxString.equals("")) {
                 String[] finalBoxWrappers = finalBoxString.split(",");
                 for (int i = 0; i < finalBoxWrappers.length; i++) {
-                    System.out.println("'" + finalBoxString + "'");
                     String[] wrapperProps = finalBoxWrappers[i].split(":");
                     int wrapperIndex = Integer.parseInt(wrapperProps[0]);
                     int wrapperCorrect = Integer.parseInt(wrapperProps[1]);
@@ -577,6 +615,7 @@ public class HelloWorldSwing {
                 }
             }
 
+            System.out.println("In boxes: " + QABoxes.countQAIndexes() + "; Remaining: " + (qaList.count() - QABoxes.countQAIndexes()));
             QABoxes.print();
 
             setQAWithIndex(QABoxes.getRandomQAIndex());
@@ -817,6 +856,7 @@ public class HelloWorldSwing {
                 System.out.println();
                 System.out.println("===================================");
                 System.out.println();
+                System.out.println("In boxes: " + QABoxes.countQAIndexes() + "; Remaining: " + (qaList.count() - QABoxes.countQAIndexes()));
                 QABoxes.print();
 
                 QABoxes.save();

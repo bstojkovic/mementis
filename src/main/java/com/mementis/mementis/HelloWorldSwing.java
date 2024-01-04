@@ -327,10 +327,7 @@ class QABoxes {
         }
         System.out.print("\n");
 
-        System.out.println("Poor: " + poor);
-        System.out.println("Fair: " + fair);
-        System.out.println("Good: " + good);
-        System.out.println("Excellent: " + excellent);
+        System.out.println("Poor: " + poor + "; Fair: " + fair + "; Good: " + good + "; Excellent: " + excellent);
     }
 
     public static void save() {

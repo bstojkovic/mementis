@@ -156,6 +156,29 @@ class QABoxes {
         return wrapper.qaIndex;
     }
 
+    public static int getRandomFinalQAIndex() {
+        boolean hasFinalQA = false;
+        for (int i = 0; i < finalBox.size(); i++) {
+            if (finalBox.get(i).correctInRow != 3) {
+                hasFinalQA = true;
+                break;
+            }
+        }
+
+        if (hasFinalQA) {
+            QAWrapper wrapper;
+
+            do {
+                int randomIndex = random.nextInt(finalBox.size());
+                wrapper = finalBox.get(randomIndex);
+            } while (wrapper.correctInRow == 3);
+
+            return wrapper.qaIndex;
+        }
+        
+        return -1;
+    }
+
     public static boolean containsQAIndex(int index) {
         for (QAWrapper wrapper : currentBox) {
             if (wrapper.qaIndex == index) {
@@ -204,6 +227,16 @@ class QABoxes {
                 return wrapper;
             }
         }
+        for (QAWrapper wrapper : reviseBox) {
+            if (wrapper.qaIndex == index) {
+                return wrapper;
+            }
+        }
+        for (QAWrapper wrapper : finalBox) {
+            if (wrapper.qaIndex == index) {
+                return wrapper;
+            }
+        }
         return null;
     }
 
@@ -235,6 +268,23 @@ class QABoxes {
         if (reviseBox.isEmpty()) {
             if (currentBox.isEmpty()) {
                 int numMoved = 0;
+                QAWrapper wrapper;
+
+                while (numMoved < 10) {
+                    wrapper = getWrapperFromIndex(getRandomFinalQAIndex());
+                    if (wrapper == null) {
+                        break;
+                    }
+                    if (wrapper.qaIndex == -1) {
+                        System.out.println("NO MORE FINAL WITH <3");
+                        break;
+                    }
+
+                    finalBox.remove(wrapper);
+                    currentBox.add(wrapper);
+                    numMoved++;
+                }
+                /*
                 it = finalBox.iterator();
                 while (it.hasNext() && numMoved < 10) {
                     QAWrapper wrapper = it.next();
@@ -244,9 +294,27 @@ class QABoxes {
                         numMoved++;
                     }
                 }
+                */
             }
 
             int numFinalMoved = 0;
+            QAWrapper wrapper;
+
+            while (numFinalMoved < 10) {
+                wrapper = getWrapperFromIndex(getRandomFinalQAIndex());
+                if (wrapper == null) {
+                    break;
+                }
+                if (wrapper.qaIndex == -1) {
+                    System.out.println("NO MORE FINAL WITH <3");
+                    break;
+                }
+
+                finalBox.remove(wrapper);
+                reviseBox.add(wrapper);
+                numFinalMoved++;
+            }
+            /*
             it = finalBox.iterator();
             while (it.hasNext() && numFinalMoved < 10) {
                 QAWrapper wrapper = it.next();
@@ -256,6 +324,7 @@ class QABoxes {
                     numFinalMoved++;
                 }
             }
+            */
 
             if (currentBox.isEmpty()) {
                 System.out.println("ALL DONE WITH FINAL BOX");
@@ -269,6 +338,23 @@ class QABoxes {
             }
 
             int numFinalMoved = 0;
+            QAWrapper wrapper;
+
+            while (numFinalMoved < 10) {
+                wrapper = getWrapperFromIndex(getRandomFinalQAIndex());
+                if (wrapper == null) {
+                    break;
+                }
+                if (wrapper.qaIndex == -1) {
+                    System.out.println("NO MORE FINAL WITH <3");
+                    break;
+                }
+
+                finalBox.remove(wrapper);
+                reviseBox.add(wrapper);
+                numFinalMoved++;
+            }
+            /*
             it = finalBox.iterator();
             while (it.hasNext() && numFinalMoved < 5) {
                 QAWrapper wrapper = it.next();
@@ -278,6 +364,7 @@ class QABoxes {
                     numFinalMoved++;
                 }
             }
+            */
         }
     }
 
@@ -380,6 +467,10 @@ class QABoxes {
         try {
             FileReader reader = new FileReader(path);
             BufferedReader bufferedReader = new BufferedReader(reader);
+
+            currentBox.clear();
+            reviseBox.clear();
+            finalBox.clear();
 
             String currentBoxString = bufferedReader.readLine();
             if (!currentBoxString.equals("")) {
@@ -524,7 +615,7 @@ public class Mementis {
     private static JTextArea questionArea;
     private static JTextPane answerArea;
 
-    private static int currentQAIndex;
+    private static int currentQAIndex = -1;
 
     private static String currentQuestion;
     private static AnswerTokenizer currentAnswerTokens;
@@ -560,17 +651,20 @@ public class Mementis {
             JButton prevButton = new JButton("Previous");
             JButton nextButton = new JButton("Next");
             JButton randomButton = new JButton("Random");
+            JButton restartButton = new JButton("Restart");
 
             // Adding action listeners
             prevButton.addActionListener(e -> handlePrevButton());
             nextButton.addActionListener(e -> handleNextButton());
             randomButton.addActionListener(e -> handleRandomButton());
+            restartButton.addActionListener(e -> initialize());
 
             // Creating a panel for buttons
             JPanel buttonPanel = new JPanel();
             buttonPanel.add(prevButton);
             buttonPanel.add(nextButton);
             buttonPanel.add(randomButton);
+            buttonPanel.add(restartButton);
             panel.add(buttonPanel, BorderLayout.SOUTH);
 
             frame.add(panel);
@@ -604,38 +698,52 @@ public class Mementis {
             actionMap.put("spaceKey", spaceKeyAction);
             actionMap.put("returnKey", returnKeyAction);
 
-            // Initialize QA's
+            initialize();
+        });
+    }
 
-            qaList = new QAList();
-            qaList.load();
+    private static void initialize() {
+        // Initialize QA's
 
-            boolean loadSuccessful = QABoxes.load();
+        qaList = new QAList();
+        qaList.load();
 
-            if (!loadSuccessful) {
-                for (int i = 0; i < 5; i++) {
-                    addRandomQAToFirstBox();
-                }
+        boolean loadSuccessful = QABoxes.load();
+
+        if (!loadSuccessful) {
+            for (int i = 0; i < 5; i++) {
+                addRandomQAToFirstBox();
             }
+        }
 
-            boolean done = false;
+        boolean done = false;
+
+        if (QABoxes.firstBoxIsEmpty()) {
+            QABoxes.advanceBoxes();
 
             if (QABoxes.firstBoxIsEmpty()) {
-                QABoxes.advanceBoxes();
-
-                if (QABoxes.firstBoxIsEmpty()) {
-                    System.out.println("ALL DONE! IN LAMBDA.");
-                    done = true;
-                }
+                System.out.println("ALL DONE! IN LAMBDA.");
+                done = true;
             }
+        }
 
-            if (!done) {
-                System.out.println("In boxes: " + QABoxes.countQAIndexes() + "; Remaining: " + (qaList.count() - QABoxes.countQAIndexes()));
-                QABoxes.print();
+        QABoxes.save();
 
+        if (!done) {
+            System.out.println("In boxes: " + QABoxes.countQAIndexes() + "; Remaining: " + (qaList.count() - QABoxes.countQAIndexes()));
+            QABoxes.print();
+
+            if (currentQAIndex == -1) {
                 setQAWithIndex(QABoxes.getRandomQAIndex());
-                viewCurrentQA();
+            } else {
+                setQAWithIndex(currentQAIndex);
             }
-        });
+
+            quickReview = true;
+            correctOnFirstTry = true;
+
+            viewCurrentQA();
+        }
     }
 
     private static void viewCurrentQA() {
@@ -734,17 +842,20 @@ public class Mementis {
     }
 
     private static void handlePrevButton() {
-        incrementQAIndex(-1);
-        viewCurrentQA();
+        /*incrementQAIndex(-1);
+        viewCurrentQA();*/
     }
 
     private static void handleNextButton() {
-        incrementQAIndex(1);
-        viewCurrentQA();
+        /*incrementQAIndex(1);
+        viewCurrentQA();*/
     }
 
     private static void handleRandomButton() {
-        setRandomQA();
+        /*setRandomQA();
+        viewCurrentQA();*/
+        int randomQAIndex = QABoxes.getRandomQAIndex();
+        setQAWithIndex(randomQAIndex);
         viewCurrentQA();
     }
 

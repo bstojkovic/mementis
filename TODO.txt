@@ -1,0 +1,1 @@
+- Undo operation for success/fail of answer text completion
